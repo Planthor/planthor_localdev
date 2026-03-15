@@ -1,0 +1,115 @@
+# =============================================================================
+# Planthor — Local Development Docker Compose
+# =============================================================================
+# Usage:
+#   cp .env.example .env        # first time only
+#   docker compose up -d        # start all services
+#   docker compose logs -f      # tail logs
+#   docker compose down         # stop and remove containers
+#   docker compose down -v      # also remove named volumes (wipe data)
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — primary relational database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-planthor_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-planthor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-planthor} -d ${POSTGRES_DB:-planthor_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis — caching, sessions, queues
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
+      # ${VAR:+text} expands to 'text' only when VAR is set and non-empty,
+      # so no --requirepass flag is added when REDIS_PASSWORD is blank.
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # MailHog — local SMTP server + web UI for email testing
+  # ---------------------------------------------------------------------------
+  mailhog:
+    image: mailhog/mailhog:latest
+    restart: unless-stopped
+    ports:
+      - "${MAIL_PORT:-1025}:1025"       # SMTP
+      - "${MAILHOG_UI_PORT:-8025}:8025" # Web UI
+    logging:
+      driver: none  # suppress noisy SMTP logs
+
+  # ---------------------------------------------------------------------------
+  # API — backend service (replace this stub with your real service)
+  # ---------------------------------------------------------------------------
+  # Uncomment and adapt once your API service has a Dockerfile.
+  #
+  # api:
+  #   build:
+  #     context: ./services/api
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     DATABASE_URL: ${DATABASE_URL}
+  #     REDIS_URL: ${REDIS_URL}
+  #   ports:
+  #     - "${API_PORT:-8000}:8000"
+  #   volumes:
+  #     - ./services/api:/app
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Web — frontend service (replace this stub with your real service)
+  # ---------------------------------------------------------------------------
+  # Uncomment and adapt once your frontend service has a Dockerfile.
+  #
+  # web:
+  #   build:
+  #     context: ./services/web
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+  #   ports:
+  #     - "${WEB_PORT:-3000}:3000"
+  #   volumes:
+  #     - ./services/web:/app
+  #     - /app/node_modules   # anonymous volume keeps node_modules inside container
+  #   depends_on:
+  #     - api
+
+volumes:
+  postgres_data:
+  redis_data:
