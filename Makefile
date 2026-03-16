@@ -12,7 +12,7 @@ COMPOSE := docker compose
 .PHONY: help
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 # -----------------------------------------------------------------------------
 # Lifecycle
@@ -40,20 +40,20 @@ restart: ## Restart all services
 	$(COMPOSE) restart
 
 .PHONY: reset
-reset: ## ⚠️  Stop containers AND delete all volumes (wipes database)
+reset: ## ⚠️  Stop containers AND delete all volumes (wipes database + Keycloak data)
 	$(COMPOSE) down -v
 
 # -----------------------------------------------------------------------------
-# Building
+# Building / pulling
 # -----------------------------------------------------------------------------
 
 .PHONY: build
-build: ## Build (or rebuild) all service images
+build: ## Build / rebuild all service images
 	$(COMPOSE) build
 
-.PHONY: build-no-cache
-build-no-cache: ## Rebuild all service images without Docker layer cache
-	$(COMPOSE) build --no-cache
+.PHONY: pull
+pull: ## Pull latest images from registries (including GHCR webapp image)
+	$(COMPOSE) pull
 
 # -----------------------------------------------------------------------------
 # Observability
@@ -73,23 +73,30 @@ ps: ## Show status of running containers
 
 .PHONY: db-shell
 db-shell: ## Open a psql shell inside the postgres container
-	$(COMPOSE) exec postgres psql -U planthor -d planthor_dev
+	$(COMPOSE) exec postgres psql -U keycloak -d keycloak
 
 .PHONY: db-reset
-db-reset: ## Drop and recreate the database (applies init scripts on next up)
-	$(COMPOSE) exec postgres psql -U planthor -d postgres \
-		-c "DROP DATABASE IF EXISTS planthor_dev;" \
-		-c "CREATE DATABASE planthor_dev;"
-	@echo "✅  Database recreated. Re-run migrations if needed."
+db-reset: ## Drop and recreate the Keycloak database (triggers re-import of realm)
+	$(COMPOSE) exec postgres psql -U keycloak -d postgres \
+		-c "DROP DATABASE IF EXISTS keycloak;" \
+		-c "CREATE DATABASE keycloak;"
+	@echo "✅  Keycloak database recreated. Restart keycloak to re-import the realm."
 
 # -----------------------------------------------------------------------------
-# Redis helpers
+# Keycloak helpers
 # -----------------------------------------------------------------------------
 
-.PHONY: redis-cli
-redis-cli: ## Open a redis-cli shell inside the redis container
-	$(COMPOSE) exec redis redis-cli
+.PHONY: keycloak-logs
+keycloak-logs: ## Tail Keycloak logs only
+	$(COMPOSE) logs -f keycloak
 
-.PHONY: redis-flush
-redis-flush: ## Flush all Redis keys (use with caution)
-	$(COMPOSE) exec redis redis-cli FLUSHALL
+.PHONY: keycloak-restart
+keycloak-restart: ## Restart the Keycloak container
+	$(COMPOSE) restart keycloak
+
+.PHONY: keycloak-open
+keycloak-open: ## Open Keycloak admin console in the default browser
+	@KC_PORT=$${KEYCLOAK_PORT:-8080}; \
+	echo "Opening http://localhost:$$KC_PORT ..."; \
+	open "http://localhost:$$KC_PORT" 2>/dev/null || xdg-open "http://localhost:$$KC_PORT" 2>/dev/null || echo "Visit: http://localhost:$$KC_PORT"
+
