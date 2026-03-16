@@ -15,6 +15,22 @@ help: ## Show this help message
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 # -----------------------------------------------------------------------------
+# Validation / CI
+# -----------------------------------------------------------------------------
+
+.PHONY: validate
+validate: ## Validate config files (docker-compose syntax, JSON, env-var coverage)
+	@echo "▶ docker compose config …"
+	@$(COMPOSE) config --quiet
+	@echo "  ✅ docker-compose.yml is valid"
+	@echo ""
+	@echo "▶ keycloak/realm-export.json …"
+	@python3 -c "import json,sys; json.load(open('keycloak/realm-export.json')); print('  ✅ keycloak/realm-export.json is valid JSON')"
+	@echo ""
+	@echo "▶ Checking all env vars in docker-compose.yml are documented in .env.example …"
+	@python3 scripts/validate_env_vars.py
+
+# -----------------------------------------------------------------------------
 # Lifecycle
 # -----------------------------------------------------------------------------
 
@@ -99,4 +115,5 @@ keycloak-open: ## Open Keycloak admin console in the default browser
 	@KC_PORT=$${KEYCLOAK_PORT:-8080}; \
 	echo "Opening http://localhost:$$KC_PORT ..."; \
 	open "http://localhost:$$KC_PORT" 2>/dev/null || xdg-open "http://localhost:$$KC_PORT" 2>/dev/null || echo "Visit: http://localhost:$$KC_PORT"
+
 

@@ -124,6 +124,8 @@ make up     # restart the webapp container
 ## Common commands
 
 ```bash
+make validate           # Validate config files (CI check)
+
 make up                 # Start all services
 make down               # Stop containers (data preserved)
 make reset              # Wipe all volumes (fresh Keycloak DB)

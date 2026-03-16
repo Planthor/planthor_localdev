@@ -102,6 +102,7 @@ make logs
 
 | Target                | Description                                         |
 |-----------------------|-----------------------------------------------------|
+| `make validate`       | Validate config files (run in CI)                   |
 | `make setup`          | Copy `.env.example` → `.env` (first-time only)      |
 | `make up`             | Start all services in the background                |
 | `make down`           | Stop containers (data preserved)                    |
