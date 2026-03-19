@@ -1,0 +1,52 @@
+# Environment variables — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Docker override files (machine-specific tweaks)
+docker-compose.override.yml
+
+# Node.js
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Go
+vendor/
+bin/
+
+# Java / Maven / Gradle
+target/
+.gradle/
+*.jar
+*.war
+
+# Terraform (if used for infra)
+.terraform/
+*.tfstate
+*.tfstate.backup

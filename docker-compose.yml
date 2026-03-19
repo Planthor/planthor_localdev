@@ -1,0 +1,102 @@
+# =============================================================================
+# Planthor — Local Development Docker Compose
+# =============================================================================
+# Quick start:
+#   cp .env.example .env        # first time only — edit values as needed
+#   docker compose up -d        # start all services
+#   docker compose logs -f      # tail logs
+#   docker compose down         # stop (data preserved)
+#   docker compose down -v      # stop + wipe volumes (full reset)
+#
+# Services started by this file:
+#   postgres  — PostgreSQL 16 (used by Keycloak)
+#   keycloak  — Keycloak 26   (identity / auth provider)  http://localhost:8080
+#   webapp    — PlanthorWebApp pulled from GHCR            http://localhost:3000
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — required by Keycloak; also available to other services
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-keycloak}
+      POSTGRES_USER: ${POSTGRES_USER:-keycloak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-keycloak_local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-keycloak} -d ${POSTGRES_DB:-keycloak}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Keycloak — identity and access management
+  #   Admin console: http://localhost:8080
+  #   Admin user:    see KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD in .env
+  #   Realm:         planthor  (auto-imported from keycloak/realm-export.json)
+  # ---------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION:-26.0}
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-keycloak}
+      KC_DB_USERNAME: ${POSTGRES_USER:-keycloak}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-keycloak_local}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # PlanthorWebApp — SvelteKit frontend pulled from GitHub Container Registry
+  #
+  # Image:   ghcr.io/planthor/planthorwebapp  (set WEBAPP_IMAGE in .env to
+  #          override — update it whenever the image name or tag changes)
+  #
+  # NOTE: The image must be accessible. If the GHCR package is private, run
+  #   docker login ghcr.io -u <your-github-username> -p <PAT>
+  # before starting.
+  #
+  # NOTE: The compiled image currently has the auth server URL baked in at
+  # build time ($env/static/private). If auth redirects point to the wrong
+  # host, rebuild the image from PlanthorWebApp with KEYCLOAK_URL set, or
+  # update the source to read the URL from a runtime environment variable.
+  # ---------------------------------------------------------------------------
+  webapp:
+    image: ${WEBAPP_IMAGE:-ghcr.io/planthor/planthorwebapp:main}
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      BASE_URL: ${BASE_URL:-http://localhost:3000}
+      ORIGIN: ${BASE_URL:-http://localhost:3000}
+    ports:
+      - "${WEBAPP_PORT:-3000}:3000"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+

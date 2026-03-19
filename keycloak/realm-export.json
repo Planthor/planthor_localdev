@@ -1,0 +1,52 @@
+{
+  "id": "planthor",
+  "realm": "planthor",
+  "displayName": "Planthor",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "clients": [
+    {
+      "clientId": "planthor",
+      "name": "Planthor Web App",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "Planthor@123",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://webapp:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://webapp:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "testuser",
+      "email": "testuser@planthor.local",
+      "firstName": "Test",
+      "lastName": "User",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Test@1234",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
