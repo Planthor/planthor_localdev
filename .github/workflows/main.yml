@@ -1,0 +1,17 @@
+name: macOS Build
+on: [push]
+
+jobs:
+  build:
+    # Use 'macos-latest' for the newest stable Apple Silicon runner
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check macOS version
+        run: sw_vers
+
+      - name: Run a build script
+        run: echo "Building for macOS..."
